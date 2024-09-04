@@ -1,29 +1,27 @@
-# Insert your SSID and Your PWD after inital setup
-wifi:
-# networks:
-#    - ssid: 'REPLACEME'          # Enter your WiFi SSID here. Example: `ssid: 'your_network_name'`
-#      password: 'REPLACEME'      # Enter your wifi password here. Example: `password: 'abcde123456'`
-  ap:
-    ssid: ${name}
+# POE NFG Tag reader
+# this is a slight modification of https://github.com/adonno/tagreader to use POE with the ESP32-POE dev board
 
-# Enable the captive portal for inital WiFi setup
-captive_portal:
+# use ethernet instead of the "normal" wifi
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
 
 dashboard_import:
   package_import_url: github://adonno/tagreader/tagreader.yaml
 
-improv_serial:
-
 
 substitutions:
-  name: tagreader
-  friendly_name: TagReader
+  name: tagreader-poe
+  friendly_name: TagReaderPOE
 
 esphome:
   name: $name
-  platform: ESP8266
-  board: d1_mini
-
+  platform: ESP32
+  board: esp32-poe
   # Automatically add the mac address to the name
   # so you can use a single firmware for all devices
   name_add_mac_suffix: true
@@ -223,8 +221,11 @@ api:
 ota:
   - platform: esphome
 
+# updated to use i2c pins on ESP32-POE's UEXT connector
 i2c:
   scan: False
+  sda: 13
+  scl: 16
   frequency: 400kHz
 
 globals:
@@ -364,10 +365,12 @@ pn532_i2c:
     then:
     - homeassistant.event:
         event: esphome.tag_removed
+
 # Define the buzzer output
+# updated to use i/o pin on ESP32-POE's UEXT connector
 output:
-- platform: esp8266_pwm
-  pin: D7
+- platform: ledc
+  pin: GPIO14
   id: buzzer
 
 binary_sensor:
@@ -381,14 +384,9 @@ text_sensor:
     hide_timestamp: true
     name: "${friendly_name} ESPHome Version"
     entity_category: diagnostic
-  - platform: wifi_info
+  - platform: ethernet_info
     ip_address:
       name: "${friendly_name} IP Address"
-      icon: mdi:wifi
-      entity_category: diagnostic
-    ssid:
-      name: "${friendly_name} Connected SSID"
-      icon: mdi:wifi-strength-2
       entity_category: diagnostic
 
 # Define buzzer as output for RTTTL
@@ -396,10 +394,12 @@ rtttl:
   output: buzzer
 
 # Configure LED
+# updated to use i/o pin on ESP32-POE's UEXT connector
+# not currently used
 light:
 - platform: neopixelbus
   variant: WS2812
-  pin: D8
+  pin: GPIO15
   num_leds: 1
   flash_transition_length: 500ms
   type: GRB
